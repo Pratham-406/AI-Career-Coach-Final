@@ -50,24 +50,51 @@ export const DashboardPage: React.FC = () => {
     { category: 'Automated Testing', student: 55, benchmark: 80, fullMark: 100 },
   ];
 
-  // Progression history data
-  const historyData = [
+  const [historyData, setHistoryData] = useState([
     { date: 'Jan 20', score: 58 },
     { date: 'Feb 18', score: 68 },
     { date: 'Mar 15', score: 76 },
     { date: 'Apr 12', score: 82 },
-  ];
+  ]);
+
+  useEffect(() => {
+    // Load assessment history
+    api.getAssessmentHistory().then(records => {
+      if (records && records.length > 0) {
+        setReadinessScore(records[0].overallScore);
+        const mapped = [...records].reverse().map(r => ({
+          date: new Date(r.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+          score: r.overallScore,
+        }));
+        setHistoryData(mapped);
+      }
+    }).catch(() => {});
+
+    // Live SSE stream updates
+    const unsubscribe = api.subscribeToLiveEvents((event) => {
+      if (event.type === 'REASSESSMENT_UPDATED') {
+        if (event.assessment?.overallScore) {
+          setReadinessScore(event.assessment.overallScore);
+        }
+        showToast('Live dashboard update received from GitHub push webhook!', 'info');
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const handleRunReassessment = async () => {
     setIsReassessing(true);
-    showToast('Running simulated AI AST scan across connected repositories...', 'info');
+    showToast('Re-assessing connected repository evidence against hiring criteria...', 'info');
     try {
       const res = await api.triggerReassessment(user?.targetRole);
       setReadinessScore(res.overallScore);
-      showToast(`Re-assessment complete! Readiness score updated to ${res.overallScore}%`, 'success');
-    } catch {
-      setReadinessScore(prev => Math.min(100, prev + 2));
-      showToast('Simulated AST scan complete (+2 score gain)', 'success');
+      showToast(
+        `Re-assessment complete! Readiness score updated to ${res.overallScore}% (${res.scoreChangeFromPrevious >= 0 ? '+' : ''}${res.scoreChangeFromPrevious}%)`,
+        'success'
+      );
+    } catch (err: any) {
+      showToast(err.message || 'Error triggering reassessment', 'error');
     } finally {
       setIsReassessing(false);
     }

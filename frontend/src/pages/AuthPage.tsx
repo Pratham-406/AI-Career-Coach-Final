@@ -19,7 +19,7 @@ export const AuthPage: React.FC = () => {
 
   // Form states
   const [email, setEmail] = useState('alex.rivera@cs.university.edu');
-  const [password, setPassword] = useState('demo1234');
+  const [password, setPassword] = useState('Password123!');
   const [name, setName] = useState('Alex Rivera');
   const [targetRole, setTargetRole] = useState('Full Stack Cloud Engineer');
   const [isLoading, setIsLoading] = useState(false);
@@ -31,7 +31,7 @@ export const AuthPage: React.FC = () => {
       if (isLoginMode) {
         await login(email, password);
       } else {
-        await register(name, email, targetRole);
+        await register(name, email, targetRole, password);
       }
     } finally {
       setIsLoading(false);
@@ -41,7 +41,7 @@ export const AuthPage: React.FC = () => {
   const handleQuickDemoSignIn = async () => {
     setIsLoading(true);
     try {
-      await login('alex.rivera@cs.university.edu', 'demo1234');
+      await login('alex.rivera@cs.university.edu', 'Password123!');
     } finally {
       setIsLoading(false);
     }
@@ -67,13 +67,13 @@ export const AuthPage: React.FC = () => {
           </p>
         </div>
 
-        {/* Demo Mode Notice Box */}
-        <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2.5">
-          <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+        {/* Real Auth Notice Box */}
+        <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 text-xs text-emerald-900 dark:text-emerald-200 flex items-start gap-2.5">
+          <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
           <div className="space-y-1">
-            <p className="font-semibold">Hackathon Evaluation Sandbox</p>
-            <p className="text-[11px] leading-relaxed text-amber-800 dark:text-amber-300">
-              Authentication is simulated for reviewer ease. You can click <strong>"One-Click Demo Sign In"</strong> below to instantly explore as a pre-configured student candidate.
+            <p className="font-semibold">Persistent Database Authentication</p>
+            <p className="text-[11px] leading-relaxed text-emerald-800 dark:text-emerald-300">
+              Secured with bcrypt password hashing and JWT sessions. You can sign in with the preloaded account or register a new candidate account.
             </p>
           </div>
         </div>

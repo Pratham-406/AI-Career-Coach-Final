@@ -16,7 +16,7 @@ interface AuthContextType {
   isDarkMode: boolean;
   toggleDarkMode: () => void;
   login: (email: string, password?: string) => Promise<void>;
-  register: (name: string, email: string, targetRole: string) => Promise<void>;
+  register: (name: string, email: string, targetRole: string, password?: string) => Promise<void>;
   logout: () => void;
   updateUser: (updates: Partial<User>) => Promise<void>;
   toasts: Toast[];
@@ -27,15 +27,35 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(fallbackUser);
+  const [user, setUser] = useState<User | null>(null);
   const [currentPage, setCurrentPage] = useState<Page>('landing');
   const [toasts, setToasts] = useState<Toast[]>([]);
-  
+
   // Theme state
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     const saved = localStorage.getItem('ai_coach_theme');
     return saved === 'dark';
   });
+
+  // Check saved session on mount
+  useEffect(() => {
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      api.getProfile()
+        .then(profile => {
+          if (profile && profile.id) {
+            setUser(profile);
+          }
+        })
+        .catch(() => {
+          localStorage.removeItem('auth_token');
+          setUser(null);
+        });
+    } else {
+      // Default initial presentation: Alex Rivera seeded user
+      setUser(fallbackUser);
+    }
+  }, []);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -65,33 +85,32 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const login = async (email: string, password?: string) => {
     try {
-      const res = await api.login(email, password);
+      const res = await api.login(email, password || 'Password123!');
       setUser(res.user);
-      showToast(`Welcome back, ${res.user.name}! (Demo Mode)`, 'success');
+      showToast(`Welcome back, ${res.user.name}!`, 'success');
       setCurrentPage('dashboard');
-    } catch {
-      showToast('Login failed. Using demo session.', 'warning');
-      setUser(fallbackUser);
-      setCurrentPage('dashboard');
+    } catch (err: any) {
+      showToast(err.message || 'Login failed. Please check credentials.', 'error');
+      throw err;
     }
   };
 
-  const register = async (name: string, email: string, targetRole: string) => {
+  const register = async (name: string, email: string, targetRole: string, password?: string) => {
     try {
-      const res = await api.register(name, email, targetRole);
+      const res = await api.register(name, email, targetRole, password || 'Password123!');
       setUser(res.user);
       showToast(`Account created for ${res.user.name}!`, 'success');
       setCurrentPage('dashboard');
-    } catch {
-      showToast('Registration complete (Demo mode active)', 'success');
-      setUser({ ...fallbackUser, name, email, targetRole });
-      setCurrentPage('dashboard');
+    } catch (err: any) {
+      showToast(err.message || 'Registration failed. Please check provided details.', 'error');
+      throw err;
     }
   };
 
   const logout = () => {
+    api.logout();
     setUser(null);
-    showToast('Signed out of demo session.', 'info');
+    showToast('Signed out of session.', 'info');
     setCurrentPage('landing');
   };
 
@@ -100,11 +119,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const updated = await api.updateProfile(updates);
       setUser(updated);
       showToast('Profile updated successfully', 'success');
-    } catch {
-      if (user) {
-        setUser({ ...user, ...updates });
-        showToast('Profile saved in local session', 'info');
-      }
+    } catch (err: any) {
+      showToast(err.message || 'Failed to update profile', 'error');
     }
   };
 
@@ -131,7 +147,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   );
 };
 
-export const useAuth = () => {
+export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');

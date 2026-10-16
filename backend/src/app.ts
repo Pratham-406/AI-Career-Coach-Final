@@ -12,7 +12,14 @@ app.use(cors({
   origin: [config.clientUrl, 'http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:3000'],
   credentials: true,
 }));
-app.use(express.json());
+
+// Capture raw body for HMAC-SHA256 signature verification on GitHub webhooks
+app.use(express.json({
+  verify: (req: any, _res, buf) => {
+    req.rawBody = buf;
+  },
+}));
+
 app.use(express.urlencoded({ extended: true }));
 app.use(requestLogger);
 
@@ -28,6 +35,7 @@ app.get('/', (req: Request, res: Response) => {
       jobs: '/api/jobs',
       assessment: '/api/assessment/gap-analysis',
       billing: '/api/billing/plans',
+      events: '/api/events',
     },
   });
 });

@@ -1,84 +1,214 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
-import { mockAssessments, mockSkillGaps } from '../data/mockStore';
-import { AssessmentRecord } from '../types';
-
-let assessments: AssessmentRecord[] = [...mockAssessments];
+import prisma from '../db/prisma';
+import { AssessmentEngine } from '../services/assessmentEngine';
+import { AuthenticatedRequest } from '../middleware/auth';
 
 export const triggerAssessmentSchema = z.object({
   body: z.object({
+    jobId: z.string().optional(),
+    repositoryIds: z.array(z.string()).optional(),
     targetRole: z.string().optional(),
-    focusAreas: z.array(z.string()).optional(),
   }),
 });
 
 export const assessmentController = {
-  getHistory: async (req: Request, res: Response) => {
-    return res.json({
-      success: true,
-      data: assessments,
-      meta: {
-        total: assessments.length,
-        timestamp: new Date().toISOString(),
-        isMockData: true,
-      },
-    });
-  },
+  getHistory: async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const userId = req.user?.id;
+      const assessments = await prisma.assessment.findMany({
+        where: userId ? { userId } : {},
+        orderBy: { createdAt: 'desc' },
+      });
 
-  getSkillGapAnalysis: async (req: Request, res: Response) => {
-    const role = req.query.role || 'Full Stack Cloud Engineer';
-    const criticalCount = mockSkillGaps.filter(g => g.importance === 'Critical').length;
-    const recommendedCount = mockSkillGaps.filter(g => g.importance === 'Recommended').length;
+      const formatted = assessments.map(a => ({
+        id: a.id,
+        timestamp: a.createdAt.toISOString(),
+        overallScore: a.overallScore,
+        targetRole: a.targetRole,
+        reposAnalyzedCount: a.reposAnalyzedCount,
+        primaryStrengths: (() => {
+          try {
+            return JSON.parse(a.primaryStrengths);
+          } catch {
+            return [];
+          }
+        })(),
+        keyGapAreas: (() => {
+          try {
+            return JSON.parse(a.keyGapAreas);
+          } catch {
+            return [];
+          }
+        })(),
+        scoreChangeFromPrevious: a.scoreChangeFromPrevious,
+        summaryFeedback: a.summaryFeedback,
+      }));
 
-    return res.json({
-      success: true,
-      data: {
-        targetRole: role,
-        readinessScore: 82,
-        targetBenchmarkScore: 88,
-        stats: {
-          totalEvaluatedSkills: mockSkillGaps.length,
-          criticalGapsCount: criticalCount,
-          recommendedGapsCount: recommendedCount,
-          readySkillsCount: mockSkillGaps.filter(g => g.currentLevel >= g.targetLevel).length,
+      return res.json({
+        success: true,
+        data: formatted,
+        meta: {
+          total: formatted.length,
+          timestamp: new Date().toISOString(),
+          isMockData: false,
         },
-        skillGaps: mockSkillGaps,
-      },
-      meta: {
-        timestamp: new Date().toISOString(),
-        isMockData: true,
-        notice: 'AI skill-gap engine simulation with code evidence detection.',
-      },
-    });
+      });
+    } catch (error: any) {
+      console.error('[assessmentController.getHistory]', error);
+      return res.status(500).json({
+        success: false,
+        error: 'InternalServerError',
+        message: error.message || 'Error fetching assessment history',
+      });
+    }
   },
 
-  triggerReassessment: async (req: Request, res: Response) => {
-    const { targetRole } = req.body;
-    const latestScore = assessments[0]?.overallScore || 80;
-    const newScore = Math.min(100, latestScore + 2);
+  getSkillGapAnalysis: async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const userId = req.user?.id;
 
-    const newRecord: AssessmentRecord = {
-      id: `eval_${Date.now()}`,
-      timestamp: new Date().toISOString(),
-      overallScore: newScore,
-      targetRole: targetRole || 'Full Stack Cloud Engineer',
-      reposAnalyzedCount: 4,
-      primaryStrengths: ['TypeScript strict typing', 'Redis caching', 'Clean architecture'],
-      keyGapAreas: ['Kubernetes Helm charts', 'End-to-end integration tests'],
-      scoreChangeFromPrevious: +2,
-      summaryFeedback: 'Automated re-assessment executed. Incremental code quality improvements detected across recent commit hashes.',
-    };
+      // Find latest assessment
+      const latestAssessment = await prisma.assessment.findFirst({
+        where: userId ? { userId } : {},
+        orderBy: { createdAt: 'desc' },
+        include: {
+          skillAssessments: true,
+        },
+      });
 
-    assessments.unshift(newRecord);
+      if (!latestAssessment) {
+        // If no assessment exists yet, trigger one
+        let defaultUserId = userId;
+        if (!defaultUserId) {
+          const defaultUser = await prisma.user.findFirst();
+          defaultUserId = defaultUser?.id || 'usr_dev_101';
+        }
 
-    return res.json({
-      success: true,
-      message: 'Portfolio re-assessment successfully generated (Simulated)',
-      data: newRecord,
-      meta: {
-        timestamp: new Date().toISOString(),
-        isMockData: true,
-      },
-    });
+        const freshOutcome = await AssessmentEngine.evaluatePortfolio(defaultUserId);
+        return res.json({
+          success: true,
+          data: {
+            targetRole: freshOutcome.targetRole,
+            readinessScore: freshOutcome.overallScore,
+            targetBenchmarkScore: 88,
+            stats: {
+              totalEvaluatedSkills: freshOutcome.skills.length,
+              criticalGapsCount: freshOutcome.skills.filter(s => s.importance === 'Critical' && s.evidenceStatus !== 'Strong Evidence').length,
+              recommendedGapsCount: freshOutcome.skills.filter(s => s.importance === 'Recommended' && s.evidenceStatus !== 'Strong Evidence').length,
+              readySkillsCount: freshOutcome.skills.filter(s => s.score >= s.targetLevel).length,
+            },
+            skillGaps: freshOutcome.skills.map(s => ({
+              skill: s.skillName,
+              category: s.category,
+              currentLevel: s.score,
+              targetLevel: s.targetLevel,
+              importance: s.importance,
+              evidenceStatus: s.evidenceStatus,
+              reason: s.explanation,
+              recommendation: s.recommendation,
+              codeReference: s.codeReference,
+              supportingFilePath: s.supportingFilePath,
+              actionItems: s.actionItems,
+            })),
+          },
+          meta: {
+            timestamp: new Date().toISOString(),
+            isMockData: false,
+          },
+        });
+      }
+
+      const skills = latestAssessment.skillAssessments;
+      const criticalCount = skills.filter(s => s.evidenceStatus !== 'Strong Evidence' && s.targetLevel >= 85).length;
+      const recommendedCount = skills.filter(s => s.evidenceStatus !== 'Strong Evidence' && s.targetLevel < 85).length;
+
+      return res.json({
+        success: true,
+        data: {
+          targetRole: latestAssessment.targetRole,
+          readinessScore: latestAssessment.overallScore,
+          targetBenchmarkScore: 88,
+          stats: {
+            totalEvaluatedSkills: skills.length,
+            criticalGapsCount: criticalCount,
+            recommendedGapsCount: recommendedCount,
+            readySkillsCount: skills.filter(s => s.score >= s.targetLevel).length,
+          },
+          skillGaps: skills.map(s => ({
+            skill: s.skillName,
+            category: s.category,
+            currentLevel: s.score,
+            targetLevel: s.targetLevel,
+            importance: s.targetLevel >= 85 ? 'Critical' : 'Recommended',
+            evidenceStatus: s.evidenceStatus,
+            reason: s.explanation,
+            recommendation: s.recommendation,
+            codeReference: s.codeReference,
+            supportingFilePath: s.supportingFilePath,
+            actionItems: (() => {
+              try {
+                return JSON.parse(s.actionItems);
+              } catch {
+                return [];
+              }
+            })(),
+          })),
+        },
+        meta: {
+          timestamp: new Date().toISOString(),
+          isMockData: false,
+        },
+      });
+    } catch (error: any) {
+      console.error('[assessmentController.getSkillGapAnalysis]', error);
+      return res.status(500).json({
+        success: false,
+        error: 'InternalServerError',
+        message: error.message || 'Error generating skill gap analysis',
+      });
+    }
+  },
+
+  triggerReassessment: async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { jobId, repositoryIds, targetRole } = req.body;
+
+      let userId = req.user?.id;
+      if (!userId) {
+        const defaultUser = await prisma.user.findFirst();
+        userId = defaultUser?.id || 'usr_dev_101';
+      }
+
+      const outcome = await AssessmentEngine.evaluatePortfolio(userId, jobId, repositoryIds);
+
+      return res.json({
+        success: true,
+        message: `Portfolio re-assessment successfully generated. Score difference: ${outcome.scoreDifference >= 0 ? '+' : ''}${outcome.scoreDifference}%`,
+        data: {
+          id: outcome.assessmentId,
+          timestamp: outcome.timestamp,
+          overallScore: outcome.overallScore,
+          previousOverallScore: outcome.previousOverallScore,
+          scoreChangeFromPrevious: outcome.scoreDifference,
+          targetRole: targetRole || outcome.targetRole,
+          reposAnalyzedCount: repositoryIds?.length || 1,
+          primaryStrengths: outcome.primaryStrengths,
+          keyGapAreas: outcome.keyGapAreas,
+          summaryFeedback: outcome.summaryFeedback,
+        },
+        meta: {
+          timestamp: new Date().toISOString(),
+          isMockData: false,
+        },
+      });
+    } catch (error: any) {
+      console.error('[assessmentController.triggerReassessment]', error);
+      return res.status(500).json({
+        success: false,
+        error: 'InternalServerError',
+        message: error.message || 'Error triggering reassessment',
+      });
+    }
   },
 };

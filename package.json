@@ -1,0 +1,26 @@
+{
+  "name": "ai-career-coach-workspace",
+  "version": "1.0.0",
+  "description": "AI Career Coach - Full-Stack Hackathon Portfolio & Skill-Gap Intelligence Platform",
+  "scripts": {
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build:backend": "npm --prefix backend run build",
+    "build:frontend": "npm --prefix frontend run build",
+    "build": "npm run build:backend && npm run build:frontend",
+    "test:health": "npm --prefix backend run test:health",
+    "test:five-steps": "npm --prefix backend run test:five-steps",
+    "test": "npm run test:five-steps",
+    "db:push": "npm --prefix backend run prisma:push",
+    "db:seed": "npx --prefix backend tsx src/db/seed.ts"
+  },
+  "keywords": [
+    "ai-career-coach",
+    "react",
+    "express",
+    "typescript",
+    "prisma"
+  ],
+  "author": "",
+  "license": "MIT"
+}

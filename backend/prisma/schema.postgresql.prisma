@@ -1,0 +1,203 @@
+// Prisma schema for AI Career Coach
+// PostgreSQL production/deployment schema
+// To use: set DATABASE_URL="postgresql://user:password@host:5432/dbname" and run npx prisma migrate deploy --schema=prisma/schema.postgresql.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                   String             @id @default(cuid())
+  name                 String
+  email                String             @unique
+  passwordHash         String
+  githubUsername       String?
+  targetRole           String             @default("Full Stack Developer")
+  experienceLevel      String             @default("Student")
+  careerReadinessScore Int                @default(80)
+  plan                 String             @default("pro")
+  avatarUrl            String?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  repositories         GitHubRepository[]
+  jobPostings          JobPosting[]
+  assessments          Assessment[]
+
+  @@index([email])
+}
+
+model GitHubRepository {
+  id               String               @id @default(cuid())
+  userId           String
+  user             User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  githubRepoId     String?
+  name             String
+  owner            String
+  description      String?              @db.Text
+  repoUrl          String
+  defaultBranch    String               @default("main")
+  latestCommitSha  String?
+  lastScanTimestamp DateTime?
+  webhookStatus    String               @default("inactive")
+  language         String               @default("TypeScript")
+  stars            Int                  @default(0)
+  forks            Int                  @default(0)
+  openIssues       Int                  @default(0)
+  codeQualityScore Int                  @default(75)
+  detectedSkills   String               @default("[]")
+  aiAnalysisStatus String               @default("pending")
+  insights         String               @default("[]")
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  scans            RepositoryScan[]
+  webhookEvents    GitHubWebhookEvent[]
+
+  @@index([userId])
+  @@index([name])
+}
+
+model JobPosting {
+  id              String           @id @default(cuid())
+  userId          String?
+  user            User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  title           String
+  company         String
+  description     String           @db.Text
+  sourceUrl       String?
+  sourceType      String           @default("manual")
+  matchScore      Int              @default(75)
+  isRemote        Boolean          @default(false)
+  type            String           @default("Full-time")
+  location        String           @default("Remote")
+  salary          String           @default("$90,000 - $120,000")
+  requiredSkills  String           @default("[]")
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  requirements    JobRequirement[]
+  assessments     Assessment[]
+
+  @@index([userId])
+  @@index([title])
+}
+
+model JobRequirement {
+  id              String            @id @default(cuid())
+  jobId           String
+  job             JobPosting        @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  requiredSkill   String
+  description     String            @db.Text
+  importance      String            @default("Critical")
+  sourceExcerpt   String?           @db.Text
+  sourceReference String?
+  createdAt       DateTime          @default(now())
+
+  skillAssessments SkillAssessment[]
+
+  @@index([jobId])
+  @@index([requiredSkill])
+}
+
+model RepositoryScan {
+  id               String         @id @default(cuid())
+  repositoryId     String
+  repository       GitHubRepository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  commitSha        String
+  scanStatus       String         @default("completed")
+  scanTimestamp    DateTime       @default(now())
+  errorInfo        String?        @db.Text
+  fileTreeSummary  String?        @db.Text
+  detectedTech     String         @default("[]")
+  createdAt        DateTime       @default(now())
+
+  evidences        CodeEvidence[]
+
+  @@index([repositoryId])
+  @@index([commitSha])
+}
+
+model CodeEvidence {
+  id                  String         @id @default(cuid())
+  scanId              String
+  scan                RepositoryScan @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  skill               String
+  filePath            String
+  startLine           Int            @default(1)
+  endLine             Int            @default(1)
+  commitSha           String
+  evidenceDescription String         @db.Text
+  confidence          Int            @default(85)
+  codeSnippet         String?        @db.Text
+  createdAt           DateTime       @default(now())
+
+  @@index([scanId])
+  @@index([skill])
+  @@index([commitSha])
+}
+
+model Assessment {
+  id                      String            @id @default(cuid())
+  userId                  String
+  user                    User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId                   String?
+  job                     JobPosting?       @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  overallScore            Int
+  previousAssessmentId    String?
+  scoreChangeFromPrevious Int               @default(0)
+  targetRole              String
+  reposAnalyzedCount      Int               @default(1)
+  primaryStrengths        String            @default("[]")
+  keyGapAreas             String            @default("[]")
+  summaryFeedback         String            @db.Text
+  createdAt               DateTime          @default(now())
+
+  skillAssessments        SkillAssessment[]
+
+  @@index([userId])
+  @@index([jobId])
+}
+
+model SkillAssessment {
+  id                 String          @id @default(cuid())
+  assessmentId       String
+  assessment         Assessment      @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  requirementId      String?
+  requirement        JobRequirement? @relation(fields: [requirementId], references: [id], onDelete: SetNull)
+  skillName          String
+  category           String          @default("Backend")
+  score              Int             @default(70)
+  targetLevel        Int             @default(85)
+  evidenceStatus     String          @default("Partial Evidence")
+  explanation        String          @db.Text
+  recommendation     String          @db.Text
+  supportingFilePath String?
+  codeReference      String?
+  actionItems        String          @default("[]")
+  createdAt          DateTime        @default(now())
+
+  @@index([assessmentId])
+  @@index([skillName])
+}
+
+model GitHubWebhookEvent {
+  id               String            @id @default(cuid())
+  deliveryId       String            @unique
+  repositoryId     String?
+  repository       GitHubRepository? @relation(fields: [repositoryId], references: [id], onDelete: SetNull)
+  eventType        String            @default("push")
+  commitSha        String?
+  processingStatus String            @default("received")
+  payload          String            @db.Text
+  errorInfo        String?           @db.Text
+  createdAt        DateTime          @default(now())
+
+  @@index([deliveryId])
+  @@index([repositoryId])
+}

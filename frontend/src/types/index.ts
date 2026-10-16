@@ -36,18 +36,37 @@ export interface RepositorySummary {
   detectedSkills: string[];
   aiAnalysisStatus: 'analyzed' | 'pending' | 'queued' | 'needs_reassessment';
   insights: string[];
+  defaultBranch?: string;
+  latestCommitSha?: string;
+  webhookStatus?: string;
+  evidencesCount?: number;
 }
 
 export interface SkillGapItem {
   skill: string;
-  category: 'Frontend' | 'Backend' | 'DevOps' | 'Database' | 'System Design' | 'AI/ML' | 'Soft Skills';
+  category: 'Frontend' | 'Backend' | 'DevOps' | 'Database' | 'System Design' | 'AI/ML' | 'Soft Skills' | string;
   currentLevel: number; // 0-100
   targetLevel: number; // 0-100
   importance: 'Critical' | 'Recommended' | 'Bonus';
-  evidenceFound: string[];
-  evidenceMissing: string[];
+  evidenceFound?: string[];
+  evidenceMissing?: string[];
   recommendation: string;
   learningResourceUrl?: string;
+  evidenceStatus?: 'Strong Evidence' | 'Partial Evidence' | 'No Evidence' | 'Not Evaluated';
+  codeReference?: string;
+  supportingFilePath?: string;
+  actionItems?: string[];
+  reason?: string;
+}
+
+export interface JobRequirement {
+  id: string;
+  jobId: string;
+  requiredSkill: string;
+  description: string;
+  importance: 'Critical' | 'Recommended' | 'Bonus';
+  sourceExcerpt?: string;
+  sourceReference?: string;
 }
 
 export interface JobPosting {
@@ -55,17 +74,22 @@ export interface JobPosting {
   title: string;
   company: string;
   logoUrl?: string;
+  companyLogo?: string;
   location: string;
-  type: 'Full-time' | 'Internship' | 'Contract' | 'Co-op';
+  type: 'Full-time' | 'Internship' | 'Contract' | 'Co-op' | string;
   isRemote: boolean;
   matchScore: number;
-  salaryRange: string;
+  salaryRange?: string;
+  salary?: string;
   requiredSkills: string[];
-  matchingSkills: string[];
-  missingSkills: string[];
+  matchingSkills?: string[];
+  missingSkills?: string[];
   description: string;
-  postedDaysAgo: number;
-  applicationUrl: string;
+  postedDaysAgo?: number;
+  applicationUrl?: string;
+  sourceUrl?: string;
+  sourceType?: string;
+  requirements?: JobRequirement[];
 }
 
 export interface AssessmentRecord {

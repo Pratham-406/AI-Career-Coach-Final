@@ -33,6 +33,16 @@ export const AssessmentHistoryPage: React.FC = () => {
 
   useEffect(() => {
     loadHistory();
+
+    // Subscribe to live SSE events
+    const unsubscribe = api.subscribeToLiveEvents((event) => {
+      if (event.type === 'REASSESSMENT_UPDATED') {
+        showToast('New assessment record received from GitHub push event!', 'info');
+        loadHistory();
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const loadHistory = async () => {
@@ -50,9 +60,9 @@ export const AssessmentHistoryPage: React.FC = () => {
     try {
       const newRec = await api.triggerReassessment(user?.targetRole);
       setAssessments(prev => [newRec, ...prev]);
-      showToast(`New assessment created! Score: ${newRec.overallScore}%`, 'success');
-    } catch {
-      showToast('Simulated re-assessment complete.', 'success');
+      showToast(`New assessment created! Score: ${newRec.overallScore}% (${newRec.scoreChangeFromPrevious >= 0 ? '+' : ''}${newRec.scoreChangeFromPrevious}%)`, 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Error triggering reassessment', 'error');
     } finally {
       setIsReassessing(false);
     }
