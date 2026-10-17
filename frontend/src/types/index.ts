@@ -7,7 +7,10 @@ export type Page =
   | 'skill-gap'
   | 'history'
   | 'pricing'
-  | 'profile';
+  | 'profile'
+  | 'tutorials'
+  | 'mock-interview'
+  | 'network';
 
 export interface User {
   id: string;
@@ -124,3 +127,110 @@ export interface Invoice {
   status: string;
   pdfUrl: string;
 }
+
+// Tutorial Video Interfaces
+export interface TutorialVideo {
+  id: string;
+  title: string;
+  description: string;
+  category: 'Core Programming' | 'Platform Walkthrough' | 'GitHub Code Quality' | 'Interview Mastery' | 'Skill Networking' | string;
+  durationMinutes: number | string;
+  videoUrl: string;
+  externalUrl?: string;
+  thumbnailUrl: string;
+  instructor: string;
+  difficulty: 'Beginner' | 'Intermediate' | 'Advanced';
+  keyTakeaways: string[];
+  actionLink?: {
+    label: string;
+    page: Page;
+  };
+  isCompleted?: boolean;
+}
+
+// AI Mock Interview Interfaces
+export interface MockInterviewQuestion {
+  id: string;
+  role: string;
+  category: 'System Design' | 'Technical Coding' | 'Behavioral STAR';
+  question: string;
+  context: string;
+  expectedKeywords: string[];
+  hint: string;
+  difficulty: 'Junior' | 'Mid' | 'Senior';
+  timeLimitSeconds: number;
+}
+
+export interface InterviewEvaluation {
+  overallScore: number;
+  clarityScore: number;
+  technicalDepthScore: number;
+  starComplianceScore: number;
+  strengths: string[];
+  improvements: string[];
+  matchedKeywords: string[];
+  missingKeywords: string[];
+  modelAnswerSummary: string;
+  readinessVerdict: string;
+}
+
+export interface MockInterviewSession {
+  id: string;
+  targetRole: string;
+  category: string;
+  date: string;
+  totalQuestions: number;
+  averageScore: number;
+  feedback: InterviewEvaluation;
+}
+
+// Skill-First Talent Network Interfaces
+export interface VerifiedSkillBadge {
+  name: string;
+  level: 'Core Proficient' | 'Advanced' | 'Mastery';
+  verifiedBy: 'GitHub AST Scan' | 'Verified Certificate' | 'Hackathon Project';
+  evidenceSnippet?: string;
+  confidenceScore: number;
+}
+
+export interface StudentCertificate {
+  id: string;
+  title: string;
+  issuer: string;
+  issueDate: string;
+  credentialUrl?: string;
+  badgeIcon: string;
+}
+
+export interface TalentProfile {
+  id: string;
+  name: string;
+  headline: string;
+  avatarUrl: string;
+  targetRole: string;
+  experienceLevel: string;
+  readinessScore: number;
+  githubUsername: string;
+  availability: 'Immediate Full-Time' | 'Summer 2026 Internship' | 'Contract / Freelance' | 'Open to Offers';
+  skills: VerifiedSkillBadge[];
+  certificates: StudentCertificate[];
+  hackathonsCount: number;
+  projectsCount: number;
+  location: string;
+}
+
+export interface RecruiterMessage {
+  id: string;
+  senderName: string;
+  senderTitle: string;
+  company: string;
+  companyLogo: string;
+  studentId: string;
+  subject: string;
+  message: string;
+  interviewType: 'Round 1 Technical Screen' | 'Full-Stack Architecture Chat' | 'Behavioral & Culture Fit' | 'Informal Connect';
+  proposedDate?: string;
+  status: 'pending' | 'accepted' | 'declined';
+  sentAt: string;
+}
+

@@ -7,6 +7,7 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
+    "test": "tsx src/scripts/testFiveSteps.ts",
     "test:health": "tsx src/scripts/testHealth.ts",
     "test:five-steps": "tsx src/scripts/testFiveSteps.ts"
   },

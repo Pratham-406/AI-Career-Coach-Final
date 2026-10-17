@@ -4,6 +4,9 @@ import githubRoutes from './githubRoutes';
 import jobRoutes from './jobRoutes';
 import assessmentRoutes from './assessmentRoutes';
 import billingRoutes from './billingRoutes';
+import tutorialRoutes from './tutorialRoutes';
+import interviewRoutes from './interviewRoutes';
+import networkRoutes from './networkRoutes';
 import { config } from '../config/env';
 import { eventService } from '../services/eventService';
 import prisma from '../db/prisma';
@@ -48,6 +51,9 @@ apiRouter.get('/health', async (req, res) => {
       jobDiscovery: 'real (URL & text requirement ingestion)',
       skillGapAssessment: 'real (evidence vs requirement comparison)',
       githubWebhooks: 'real (HMAC-SHA256 signature verified)',
+      mockInterviews: 'real (interactive voice + AI evaluation)',
+      skillNetwork: 'real (clutter-free talent matrix + recruiter messaging)',
+      tutorials: 'active (curated engineering guides)',
       liveSSE: 'active',
       billing: 'ready',
     },
@@ -67,5 +73,8 @@ apiRouter.use('/github', githubRoutes);
 apiRouter.use('/jobs', jobRoutes);
 apiRouter.use('/assessment', assessmentRoutes);
 apiRouter.use('/billing', billingRoutes);
+apiRouter.use('/tutorials', tutorialRoutes);
+apiRouter.use('/interviews', interviewRoutes);
+apiRouter.use('/network', networkRoutes);
 
 export default apiRouter;

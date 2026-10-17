@@ -17,7 +17,10 @@ import {
   Sparkles,
   ChevronRight,
   LogOut,
-  LayoutDashboard
+  LayoutDashboard,
+  Video,
+  Mic,
+  Users,
 } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
@@ -29,9 +32,11 @@ export const Navbar: React.FC = () => {
     { label: 'Dashboard', page: 'dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
     { label: 'Repositories', page: 'repositories', icon: <GitBranch className="w-4 h-4" /> },
     { label: 'Job Discovery', page: 'jobs', icon: <Search className="w-4 h-4" /> },
-    { label: 'Skill Gap & Evidence', page: 'skill-gap', icon: <BrainCircuit className="w-4 h-4" /> },
+    { label: 'Skill Gap', page: 'skill-gap', icon: <BrainCircuit className="w-4 h-4" /> },
+    { label: 'Mock Interview', page: 'mock-interview', icon: <Mic className="w-4 h-4 text-emerald-500" /> },
+    { label: 'Skills Network', page: 'network', icon: <Users className="w-4 h-4 text-indigo-500" /> },
+    { label: 'Tutorials', page: 'tutorials', icon: <Video className="w-4 h-4 text-brand-500" /> },
     { label: 'History', page: 'history', icon: <History className="w-4 h-4" /> },
-    { label: 'Pricing', page: 'pricing', icon: <CreditCard className="w-4 h-4" /> },
   ];
 
   const handleNavClick = (page: Page) => {

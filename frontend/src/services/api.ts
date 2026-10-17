@@ -1,4 +1,18 @@
-import { User, RepositorySummary, SkillGapItem, JobPosting, AssessmentRecord, PricingPlan, Invoice } from '../types';
+import {
+  User,
+  RepositorySummary,
+  SkillGapItem,
+  JobPosting,
+  AssessmentRecord,
+  PricingPlan,
+  Invoice,
+  TutorialVideo,
+  MockInterviewQuestion,
+  InterviewEvaluation,
+  MockInterviewSession,
+  TalentProfile,
+  RecruiterMessage,
+} from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
@@ -460,4 +474,497 @@ export const api = {
   async checkHealth(): Promise<{ status: string; uptimeSeconds?: number; environment?: string }> {
     return fetchWithFallback('/health', { method: 'GET' }, { status: 'mock-offline', environment: 'client-fallback' });
   },
+
+  // Tutorials
+  async getTutorials(): Promise<TutorialVideo[]> {
+    return fetchWithFallback('/tutorials', { method: 'GET' }, fallbackTutorials);
+  },
+
+  async completeTutorial(id: string): Promise<any> {
+    return fetchWithFallback(`/tutorials/${id}/complete`, { method: 'POST' }, { success: true });
+  },
+
+  // Mock Interview
+  async getInterviewQuestions(role?: string, category?: string): Promise<MockInterviewQuestion[]> {
+    const params = new URLSearchParams();
+    if (role) params.set('role', role);
+    if (category) params.set('category', category);
+    return fetchWithFallback(`/interviews/questions?${params.toString()}`, { method: 'GET' }, fallbackInterviewQuestions);
+  },
+
+  async evaluateInterviewAnswer(questionId: string, answer: string, role?: string): Promise<{ evaluation: InterviewEvaluation }> {
+    return fetchWithFallback(
+      '/interviews/evaluate',
+      { method: 'POST', body: JSON.stringify({ questionId, answer, role }) },
+      {
+        evaluation: {
+          overallScore: 84,
+          clarityScore: 88,
+          technicalDepthScore: 82,
+          starComplianceScore: 85,
+          strengths: ['Identified core architectural patterns', 'Demonstrated production incident awareness'],
+          improvements: ['Add quantifiable business metrics to conclusions', 'Mention distributed tracing safeguards'],
+          matchedKeywords: ['Redis', 'Dead Letter Queue', 'Idempotency'],
+          missingKeywords: ['Exponential Backoff', 'Jitter'],
+          modelAnswerSummary: 'Strong technical explanation demonstrating solid systems maturity.',
+          readinessVerdict: 'High Technical Competence — Recommended for Onsite Interview',
+        },
+      }
+    );
+  },
+
+  async saveInterviewSession(sessionData: Partial<MockInterviewSession>): Promise<{ session: MockInterviewSession }> {
+    return fetchWithFallback(
+      '/interviews/sessions',
+      { method: 'POST', body: JSON.stringify(sessionData) },
+      {
+        session: {
+          id: `session_${Date.now()}`,
+          targetRole: sessionData.targetRole || 'Full Stack Cloud Engineer',
+          category: sessionData.category || 'System Design',
+          date: new Date().toISOString(),
+          totalQuestions: sessionData.totalQuestions || 1,
+          averageScore: sessionData.averageScore || 85,
+          feedback: sessionData.feedback as InterviewEvaluation,
+        },
+      }
+    );
+  },
+
+  async getInterviewHistory(): Promise<MockInterviewSession[]> {
+    return fetchWithFallback('/interviews/history', { method: 'GET' }, fallbackInterviewSessions);
+  },
+
+  // Skill-First Talent Network
+  async getTalentProfiles(skill?: string, role?: string): Promise<TalentProfile[]> {
+    const params = new URLSearchParams();
+    if (skill) params.set('skill', skill);
+    if (role) params.set('role', role);
+    return fetchWithFallback(`/network/talents?${params.toString()}`, { method: 'GET' }, fallbackTalentProfiles);
+  },
+
+  async sendRecruiterMessage(payload: Partial<RecruiterMessage>): Promise<RecruiterMessage> {
+    return fetchWithFallback(
+      '/network/messages',
+      { method: 'POST', body: JSON.stringify(payload) },
+      {
+        id: `msg_${Date.now()}`,
+        senderName: payload.senderName || 'Senior Tech Lead',
+        senderTitle: payload.senderTitle || 'Talent Acquisition Partner',
+        company: payload.company || 'Stripe',
+        companyLogo: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&auto=format&fit=crop&q=80',
+        studentId: payload.studentId || 'talent-01',
+        subject: payload.subject || 'Interview Request: Engineering Role',
+        message: payload.message || 'We love your verified skills!',
+        interviewType: payload.interviewType || 'Round 1 Technical Screen',
+        proposedDate: payload.proposedDate || 'Next Tuesday at 2:00 PM PST',
+        status: 'pending',
+        sentAt: 'Just now',
+      }
+    );
+  },
+
+  async getStudentInbox(): Promise<RecruiterMessage[]> {
+    return fetchWithFallback('/network/inbox', { method: 'GET' }, fallbackRecruiterMessages);
+  },
+
+  async updateMessageStatus(id: string, status: 'accepted' | 'declined'): Promise<RecruiterMessage> {
+    return fetchWithFallback(
+      `/network/messages/${id}`,
+      { method: 'PATCH', body: JSON.stringify({ status }) },
+      {
+        id,
+        senderName: 'Rachel Vance',
+        senderTitle: 'Engineering Talent Partner',
+        company: 'Stripe',
+        companyLogo: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&auto=format&fit=crop&q=80',
+        studentId: 'talent-01',
+        subject: 'Interview Request',
+        message: 'Status updated',
+        interviewType: 'Round 1 Technical Screen',
+        status,
+        sentAt: 'Yesterday',
+      }
+    );
+  },
+
+  async addStudentSkill(skill: { name: string; level: string; verifiedBy: string; evidenceSnippet?: string }): Promise<any> {
+    return fetchWithFallback('/network/skills', { method: 'POST', body: JSON.stringify(skill) }, { success: true });
+  },
 };
+
+// Fallback datasets for new features
+export const fallbackTutorials: TutorialVideo[] = [
+  {
+    id: 'tut-cwh-python',
+    title: 'Python for Beginners (Full Course #100DaysOfCode)',
+    description: 'Master Python programming from zero to advanced with CodeWithHarry. Covers core data structures, OOPs, modules, automation, and real-world project development.',
+    category: 'Core Programming',
+    durationMinutes: '100+ Videos',
+    videoUrl: 'https://www.youtube-nocookie.com/embed/videoseries?list=PLu0W_9lII9agwh1XjRt242xIpHhPT2llg',
+    externalUrl: 'https://youtube.com/playlist?list=PLu0W_9lII9agwh1XjRt242xIpHhPT2llg&si=82RHskftZhCeUxxa',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1526379095098-d400fd0bf935?w=600&auto=format&fit=crop&q=80',
+    instructor: 'CodeWithHarry (Harry)',
+    difficulty: 'Beginner',
+    keyTakeaways: [
+      'Comprehensive Python fundamentals, control flow, functions & packages.',
+      'Hands-on object-oriented programming (OOP), file I/O & exception handling.',
+      'Building portfolio projects and automating scripts to prove skills.',
+    ],
+    actionLink: {
+      label: 'Update Python in Skills',
+      page: 'network',
+    },
+    isCompleted: false,
+  },
+  {
+    id: 'tut-cw-cpp',
+    title: 'C++ in One Shot | Complete Programming Tutorial for Beginners',
+    description: 'Comprehensive end-to-end C++ masterclass by College Wallah. Covers syntax, conditional statements, loops, pattern printing, pointers, recursion, and arrays.',
+    category: 'Core Programming',
+    durationMinutes: 120,
+    videoUrl: 'https://www.youtube-nocookie.com/embed/e7sAf4SbS_g',
+    externalUrl: 'https://youtu.be/e7sAf4SbS_g?si=txne4EVLvzSRlNhH',
+    thumbnailUrl: 'https://images.unsplash.com/photo-1515879218367-8466d910aaa4?w=600&auto=format&fit=crop&q=80',
+    instructor: 'College Wallah (PW Skills)',
+    difficulty: 'Intermediate',
+    keyTakeaways: [
+      'Master C++ core syntax, pointers, memory references, and recursion.',
+      'Solve pattern printing, multidimensional arrays, and string algorithms.',
+      'Prepare fundamental DSA concepts tested in top engineering interviews.',
+    ],
+    actionLink: {
+      label: 'Practice Mock Interview',
+      page: 'mock-interview',
+    },
+    isCompleted: false,
+  },
+];
+
+export const fallbackInterviewQuestions: MockInterviewQuestion[] = [
+  {
+    id: 'q-fullstack-1',
+    role: 'Full Stack Cloud Engineer',
+    category: 'System Design',
+    question: 'How would you architect a resilient, distributed asynchronous job queue that handles sudden 10x traffic spikes while preventing message loss?',
+    context: 'The candidate should explain message brokers (Redis Streams, RabbitMQ, or SQS), idempotency keys, dead-letter queues (DLQ), and exponential backoff retry policies.',
+    expectedKeywords: ['Redis', 'RabbitMQ', 'SQS', 'Idempotency', 'Dead Letter Queue', 'DLQ', 'Backoff', 'Worker', 'Concurrency', 'Scale'],
+    hint: 'Mention how you guarantee at-least-once delivery semantics and handle poison pill messages.',
+    difficulty: 'Mid',
+    timeLimitSeconds: 180,
+  },
+  {
+    id: 'q-fullstack-2',
+    role: 'Full Stack Cloud Engineer',
+    category: 'Technical Coding',
+    question: 'Explain how you structure database transactions and optimistic locking in Node.js/TypeScript to prevent race conditions during concurrent account balance updates.',
+    context: 'Focus on ACID guarantees, Prisma/TypeORM interactive transactions, isolation levels, or version columns.',
+    expectedKeywords: ['Transaction', 'ACID', 'Isolation', 'Optimistic Locking', 'Rollback', 'Prisma', 'Race Condition', 'Version'],
+    hint: 'Think about what happens when two concurrent requests read the same balance and try to decrement it simultaneously.',
+    difficulty: 'Senior',
+    timeLimitSeconds: 150,
+  },
+  {
+    id: 'q-fullstack-3',
+    role: 'Full Stack Cloud Engineer',
+    category: 'Behavioral STAR',
+    question: 'Tell me about a high-severity production bug or outage you encountered. How did you diagnose it under pressure, and what safeguards did you put in place?',
+    context: 'Evaluate STAR method: Situation, Task, Action, and Result.',
+    expectedKeywords: ['Situation', 'Task', 'Action', 'Result', 'Logs', 'Monitoring', 'Post-mortem', 'Safeguard', 'Impact', 'Metric'],
+    hint: 'Follow the STAR structure clearly and quantify the downtime duration and recovery metric.',
+    difficulty: 'Junior',
+    timeLimitSeconds: 180,
+  },
+];
+
+export const fallbackInterviewSessions: MockInterviewSession[] = [
+  {
+    id: 'session-demo-01',
+    targetRole: 'Full Stack Cloud Engineer',
+    category: 'System Design & STAR',
+    date: '2026-04-14T15:30:00Z',
+    totalQuestions: 3,
+    averageScore: 84,
+    feedback: {
+      overallScore: 84,
+      clarityScore: 88,
+      technicalDepthScore: 82,
+      starComplianceScore: 86,
+      strengths: [
+        'Clear articulation of Redis dead-letter queues and idempotency keys.',
+        'Well-structured STAR responses with quantifiable downtime reduction metrics.',
+      ],
+      improvements: [
+        'Could elaborate further on backoff jitter algorithms to prevent thundering herd problems.',
+        'Mention distributed tracing (OpenTelemetry) when investigating microservice latency.',
+      ],
+      matchedKeywords: ['Redis', 'Dead Letter Queue', 'Idempotency', 'Monitoring', 'Post-mortem'],
+      missingKeywords: ['Jitter', 'Exponential Backoff', 'OpenTelemetry'],
+      modelAnswerSummary: 'Strong candidate response demonstrating production readiness and methodical troubleshooting instincts.',
+      readinessVerdict: 'High Technical Competence — Recommended for Onsite Interview',
+    },
+  },
+];
+
+export const fallbackTalentProfiles: TalentProfile[] = [
+  {
+    id: 'talent-01',
+    name: 'Alex Rivera (You)',
+    headline: 'Full-Stack & Cloud Systems Builder | Distributed Architecture',
+    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    targetRole: 'Full Stack Cloud Engineer',
+    experienceLevel: 'Student / Senior Year',
+    readinessScore: 82,
+    githubUsername: 'alexrivera-dev',
+    availability: 'Summer 2026 Internship',
+    skills: [
+      {
+        name: 'TypeScript',
+        level: 'Mastery',
+        verifiedBy: 'GitHub AST Scan',
+        evidenceSnippet: 'eventflow-distributed-queue/src/server.ts:42 (Strict types, generics, async streams)',
+        confidenceScore: 94,
+      },
+      {
+        name: 'Node.js & Express',
+        level: 'Advanced',
+        verifiedBy: 'GitHub AST Scan',
+        evidenceSnippet: 'backend/src/controllers/jobController.ts:18 (REST endpoints, middleware)',
+        confidenceScore: 90,
+      },
+      {
+        name: 'Redis',
+        level: 'Core Proficient',
+        verifiedBy: 'GitHub AST Scan',
+        evidenceSnippet: 'services/jobQueueService.ts:31 (Pub/Sub channels, TTL caching)',
+        confidenceScore: 86,
+      },
+      {
+        name: 'Docker & Containerization',
+        level: 'Core Proficient',
+        verifiedBy: 'GitHub AST Scan',
+        evidenceSnippet: 'Dockerfile & docker-compose.yml (Multi-stage build)',
+        confidenceScore: 88,
+      },
+      {
+        name: 'PostgreSQL & Prisma',
+        level: 'Advanced',
+        verifiedBy: 'Verified Certificate',
+        evidenceSnippet: 'Prisma Client migrations & relations',
+        confidenceScore: 92,
+      },
+    ],
+    certificates: [
+      {
+        id: 'cert-1',
+        title: 'AWS Certified Cloud Practitioner',
+        issuer: 'Amazon Web Services',
+        issueDate: 'Jan 2026',
+        credentialUrl: 'https://aws.amazon.com/verification',
+        badgeIcon: 'cloud',
+      },
+      {
+        id: 'cert-2',
+        title: 'Distributed Systems & Microservices Architecture',
+        issuer: 'Coursera / Stanford Online',
+        issueDate: 'Dec 2025',
+        credentialUrl: 'https://coursera.org/verify',
+        badgeIcon: 'server',
+      },
+    ],
+    hackathonsCount: 4,
+    projectsCount: 6,
+    location: 'San Francisco, CA (Open to Remote)',
+  },
+  {
+    id: 'talent-02',
+    name: 'Priya Sharma',
+    headline: 'High-Throughput Backend & Streaming Pipelines Specialist',
+    avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
+    targetRole: 'Distributed Systems Engineer',
+    experienceLevel: 'Student / Master CS',
+    readinessScore: 89,
+    githubUsername: 'priyasharma-eng',
+    availability: 'Immediate Full-Time',
+    skills: [
+      {
+        name: 'Apache Kafka',
+        level: 'Mastery',
+        verifiedBy: 'GitHub AST Scan',
+        evidenceSnippet: 'kafka-event-stream/consumer.go:112 (Partition consumer groups)',
+        confidenceScore: 96,
+      },
+      {
+        name: 'Go (Golang)',
+        level: 'Mastery',
+        verifiedBy: 'GitHub AST Scan',
+        evidenceSnippet: 'pkg/worker/pool.go:48 (Goroutines, channels, sync.Mutex)',
+        confidenceScore: 95,
+      },
+      {
+        name: 'Kubernetes',
+        level: 'Advanced',
+        verifiedBy: 'Verified Certificate',
+        evidenceSnippet: 'k8s/deployment.yaml (HPA, StatefulSet, Ingress)',
+        confidenceScore: 91,
+      },
+      {
+        name: 'PostgreSQL',
+        level: 'Advanced',
+        verifiedBy: 'Hackathon Project',
+        evidenceSnippet: 'db/migrations/001_partitioning.sql',
+        confidenceScore: 88,
+      },
+    ],
+    certificates: [
+      {
+        id: 'cert-3',
+        title: 'Certified Kubernetes Application Developer (CKAD)',
+        issuer: 'Linux Foundation / CNCF',
+        issueDate: 'Feb 2026',
+        badgeIcon: 'box',
+      },
+    ],
+    hackathonsCount: 5,
+    projectsCount: 8,
+    location: 'Seattle, WA',
+  },
+  {
+    id: 'talent-03',
+    name: 'Liam O’Connor',
+    headline: 'AI Systems & LLM Infra Engineer | Vector Indexing & RAG Pipelines',
+    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    targetRole: 'AI / ML Engineer',
+    experienceLevel: 'Student / Senior',
+    readinessScore: 86,
+    githubUsername: 'liam-ai-dev',
+    availability: 'Summer 2026 Internship',
+    skills: [
+      {
+        name: 'Python',
+        level: 'Mastery',
+        verifiedBy: 'GitHub AST Scan',
+        evidenceSnippet: 'rag-engine/pipeline.py:84 (PyTorch, Asyncio, FastAPI)',
+        confidenceScore: 95,
+      },
+      {
+        name: 'LangChain & LlamaIndex',
+        level: 'Advanced',
+        verifiedBy: 'GitHub AST Scan',
+        evidenceSnippet: 'retrievers/hybrid.py:22 (Vector similarity + BM25)',
+        confidenceScore: 92,
+      },
+      {
+        name: 'Milvus / Pinecone',
+        level: 'Advanced',
+        verifiedBy: 'Hackathon Project',
+        evidenceSnippet: 'vector_store/indexer.py:55 (HNSW indexing)',
+        confidenceScore: 89,
+      },
+      {
+        name: 'FastAPI',
+        level: 'Advanced',
+        verifiedBy: 'GitHub AST Scan',
+        evidenceSnippet: 'api/endpoints/stream.py:19 (SSE streaming tokens)',
+        confidenceScore: 91,
+      },
+    ],
+    certificates: [
+      {
+        id: 'cert-4',
+        title: 'Deep Learning Specialization',
+        issuer: 'DeepLearning.AI',
+        issueDate: 'Nov 2025',
+        badgeIcon: 'cpu',
+      },
+    ],
+    hackathonsCount: 3,
+    projectsCount: 5,
+    location: 'Austin, TX',
+  },
+  {
+    id: 'talent-04',
+    name: 'Chloe Kim',
+    headline: 'Design Systems & High-Fidelity Interactive Frontend Architect',
+    avatarUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80',
+    targetRole: 'Frontend UI/UX Engineer',
+    experienceLevel: 'Entry Level',
+    readinessScore: 91,
+    githubUsername: 'chloekim-ui',
+    availability: 'Immediate Full-Time',
+    skills: [
+      {
+        name: 'React 19 & Next.js',
+        level: 'Mastery',
+        verifiedBy: 'GitHub AST Scan',
+        evidenceSnippet: 'app/dashboard/page.tsx:34 (Server components, suspense)',
+        confidenceScore: 97,
+      },
+      {
+        name: 'Tailwind CSS',
+        level: 'Mastery',
+        verifiedBy: 'GitHub AST Scan',
+        evidenceSnippet: 'styles/tokens.css (Custom design system variables)',
+        confidenceScore: 95,
+      },
+      {
+        name: 'TypeScript',
+        level: 'Advanced',
+        verifiedBy: 'GitHub AST Scan',
+        evidenceSnippet: 'types/schema.ts:18 (Discriminated unions, strict lints)',
+        confidenceScore: 93,
+      },
+      {
+        name: 'Playwright E2E',
+        level: 'Core Proficient',
+        verifiedBy: 'GitHub AST Scan',
+        evidenceSnippet: 'tests/e2e/checkout.spec.ts:12 (Flake-free test suites)',
+        confidenceScore: 87,
+      },
+    ],
+    certificates: [
+      {
+        id: 'cert-5',
+        title: 'Meta Frontend Professional Certificate',
+        issuer: 'Meta / Coursera',
+        issueDate: 'Jan 2026',
+        badgeIcon: 'layout',
+      },
+    ],
+    hackathonsCount: 6,
+    projectsCount: 9,
+    location: 'New York, NY',
+  },
+];
+
+export const fallbackRecruiterMessages: RecruiterMessage[] = [
+  {
+    id: 'msg-rec-1',
+    senderName: 'Rachel Vance',
+    senderTitle: 'Engineering Talent Partner',
+    company: 'Stripe',
+    companyLogo: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=100&auto=format&fit=crop&q=80',
+    studentId: 'talent-01',
+    subject: 'Interview Request: Cloud Infrastructure & Distributed Queue Team',
+    message: 'Hi Alex! We noticed your verified TypeScript & Redis AST proof on the Skill Matrix, specifically your eventflow-distributed-queue repository. Your handling of dead-letter queues and transaction boundaries matches our technical requirements. Would you be open for an introductory architecture round?',
+    interviewType: 'Round 1 Technical Screen',
+    proposedDate: 'Thursday, 3:00 PM PST',
+    status: 'pending',
+    sentAt: 'Yesterday, 4:15 PM',
+  },
+  {
+    id: 'msg-rec-2',
+    senderName: 'Marcus Bradley',
+    senderTitle: 'Senior Tech Recruiter',
+    company: 'Datadog',
+    companyLogo: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=100&auto=format&fit=crop&q=80',
+    studentId: 'talent-01',
+    subject: 'Fast-Track Summer 2026 Backend Systems Internship',
+    message: 'Hey Alex, your 82% Career Readiness Score and Docker containerization evidence caught our engineering leads attention. We would love to invite you for a 45-minute live coding screen with our Core Ingestion team.',
+    interviewType: 'Full-Stack Architecture Chat',
+    proposedDate: 'Friday, 11:00 AM PST',
+    status: 'accepted',
+    sentAt: '2 days ago',
+  },
+];
+

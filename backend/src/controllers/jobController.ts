@@ -28,7 +28,8 @@ export const createJobSchema = z.object({
     requiredSkills: z.array(z.string()).default([]),
     requirements: z.array(
       z.object({
-        requiredSkill: z.string(),
+        requiredSkill: z.string().optional(),
+        skill: z.string().optional(),
         description: z.string(),
         importance: z.enum(['Critical', 'Recommended', 'Bonus']).default('Recommended'),
         sourceExcerpt: z.string().optional(),

@@ -15,18 +15,29 @@ import { SkillGapPage } from './pages/SkillGapPage';
 import { AssessmentHistoryPage } from './pages/AssessmentHistoryPage';
 import { PricingPage } from './pages/PricingPage';
 import { BillingProfilePage } from './pages/BillingProfilePage';
+import { TutorialsPage } from './pages/TutorialsPage';
+import { MockInterviewPage } from './pages/MockInterviewPage';
+import { SkillNetworkPage } from './pages/SkillNetworkPage';
 
 export const AppContent: React.FC = () => {
-  const { currentPage } = useAuth();
+  const { currentPage, isAuthenticated } = useAuth();
 
-  useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }); }, [currentPage]);
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [currentPage]);
 
   const renderCurrentPage = () => {
+    // Public landing page
+    if (currentPage === 'landing') {
+      return <LandingPage />;
+    }
+
+    // Strict Authentication Guard: If unauthenticated, lock to Instagram-style AuthPage
+    if (!isAuthenticated || currentPage === 'auth') {
+      return <AuthPage />;
+    }
+
     switch (currentPage) {
-      case 'landing':
-        return <LandingPage />;
-      case 'auth':
-        return <AuthPage />;
       case 'dashboard':
         return <DashboardPage />;
       case 'repositories':
@@ -37,12 +48,18 @@ export const AppContent: React.FC = () => {
         return <SkillGapPage />;
       case 'history':
         return <AssessmentHistoryPage />;
+      case 'tutorials':
+        return <TutorialsPage />;
+      case 'mock-interview':
+        return <MockInterviewPage />;
+      case 'network':
+        return <SkillNetworkPage />;
       case 'pricing':
         return <PricingPage />;
       case 'profile':
         return <BillingProfilePage />;
       default:
-        return <LandingPage />;
+        return <DashboardPage />;
     }
   };
 
@@ -51,7 +68,7 @@ export const AppContent: React.FC = () => {
       <a href="#main-content" className="skip-link">Skip to content</a>
       <DisclaimerBanner />
       <Navbar />
-      <main id="main-content" className={`flex-1 pb-12 page-${currentPage}`} >
+      <main id="main-content" className={`flex-1 pb-12 page-${currentPage}`}>
         {renderCurrentPage()}
       </main>
       <Footer />
