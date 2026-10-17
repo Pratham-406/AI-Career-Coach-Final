@@ -38,3 +38,5 @@ Thumbs.db
 # Local SQLite database
 backend/prisma/dev.db
 *.db-journal
+
+backend/prisma/dev.db
