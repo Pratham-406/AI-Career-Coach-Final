@@ -34,3 +34,9 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+# Local SQLite database
+backend/prisma/dev.db
+*.db-journal
+
+backend/prisma/dev.db
