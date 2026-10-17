@@ -47,7 +47,7 @@ export class GitHubScannerService {
     };
 
     if (config.githubToken) {
-      headers['Authorization'] = `token ${config.githubToken}`;
+      headers['Authorization'] = `Bearer ${config.githubToken.trim()}`;
     }
 
     const response = await fetch(url, { headers, signal: AbortSignal.timeout(15000) });
@@ -145,9 +145,17 @@ export class GitHubScannerService {
         lower.includes('server.') ||
         lower.includes('app.') ||
         lower.includes('test') ||
-        lower.includes('spec')
+        lower.includes('spec') ||
+        lower.endsWith('.ts') ||
+        lower.endsWith('.tsx')
       );
-    }).slice(0, 10); // inspect up to 10 key files
+    }).sort((a, b) => {
+      // Prioritize shallow paths and package.json / Dockerfile over deeply nested workflows
+      const aIsRoot = !a.includes('/') ? 1 : 0;
+      const bIsRoot = !b.includes('/') ? 1 : 0;
+      if (aIsRoot !== bIsRoot) return bIsRoot - aIsRoot;
+      return a.split('/').length - b.split('/').length;
+    }).slice(0, 15); // inspect up to 15 key files
 
     for (const path of priorityPaths) {
       try {
@@ -239,6 +247,20 @@ export class GitHubScannerService {
             commitSha,
             evidenceDescription: `Test suite implementation verified in ${path}`,
             confidence: 88,
+            codeSnippet: lines.slice(0, 6).join('\n'),
+          });
+        }
+
+        if (path.endsWith('.ts') || path.endsWith('.tsx') || path.toLowerCase().includes('typescript')) {
+          detectedSkills.add('TypeScript');
+          evidences.push({
+            skill: 'TypeScript',
+            filePath: path,
+            startLine: 1,
+            endLine: Math.min(lines.length, 25),
+            commitSha,
+            evidenceDescription: `TypeScript module implementation and static typing verified in ${path}`,
+            confidence: 94,
             codeSnippet: lines.slice(0, 6).join('\n'),
           });
         }
